@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mastermind Pareja & PC</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #818cf8;
+            margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Menú principal */
+        .menu-btn {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-pc {
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn-pc:hover { background-color: var(--primary-hover); }
+
+        .btn-duo-create {
+            background-color: #059669;
+            color: white;
+        }
+        .btn-duo-create:hover { background-color: #047857; }
+
+        .btn-secondary {
+            background-color: #475569;
+            color: white;
+        }
+        .btn-secondary:hover { background-color: #334155; }
+
+        /* Selector de colores */
+        .color-picker-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: transform 0.1s, border-color 0.1s;
+        }
+
+        .color-option.selected {
+            border-color: white;
+            transform: scale(1.1);
+        }
+
+        /* Tablero */
+        .board {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            max-height: 350px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .row.active-row {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .pegs-guess {
+            display: flex;
+            gap: 8px;
+        }
+
+        .peg {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #334155;
+            border: 2px dashed #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .peg.filled {
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .pegs-feedback {
+            display: grid;
+            grid-template-columns: repeat(2, 12px);
+            gap: 4px;
+            background: #0f172a;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .feedback-pin {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #334155;
+        }
+
+        .feedback-pin.black { background: #000; border: 1px solid #666; }
+        .feedback-pin.white { background: #fff; }
+
+        /* Controles de fila activa */
+        .row-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-check { background-color: #10b981; color: white; }
+        .btn-check:hover { background-color: #059669; }
+        .btn-check:disabled { background-color: #334155; color: var(--text-muted); cursor: not-allowed; }
+
+        /* Paleta de colores disponibles */
+        .palette {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 15px 0;
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        /* Colores del juego (Modificables lógicamente) */
+        .c-red    { background-color: #ef4444; }
+        .c-blue   { background-color: #3b82f6; }
+        .c-green  { background-color: #22c55e; }
+        .c-yellow { background-color: #eab308; }
+        .c-purple { background-color: #a855f7; }
+        .c-orange { background-color: #f97316; }
+
+        /* Pantallas modales / mensajes */
+        .msg-box {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .msg-info { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid #3b82f6; }
+        .msg-success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; }
+        .msg-error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
+
+        textarea.share-link {
+            width: 100%;
+            height: 70px;
+            background: #0f172a;
+            color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 0.8rem;
+            resize: none;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Mastermind</h1>
+        <p class="subtitle">Descubre el código secreto</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- VISTA 1: MENÚ PRINCIPAL -->
+        <div id="view-menu" class="view active">
+            <button class="menu-btn btn-pc" onclick="startPCGame()">🤖 Jugar contra la PC</button>
+            <button class="menu-btn btn-duo-create" onclick="showCreateDuo()">👥 Crear partida para Dos Teléfonos</button>
+        </div>
+
+        <!-- VISTA 2: CREAR CÓDIGO DUO (JUGADOR 1) -->
+        <div id="view-create-duo" class="view">
+            <div class="msg-box msg-info">Selecciona 4 colores para tu clave secreta. Luego comparte el enlace generado con tu pareja.</div>
+            
+            <div class="color-picker-container" id="secret-builder">
+                <!-- Se generan dinámicamente -->
+            </div>
+
+            <div class="palette" id="palette-builder">
+                <!-- Se generan dinámicamente -->
+            </div>
+
+            <button class="menu-btn btn-duo-create" id="btn-generate-link" onclick="generateDuoLink()" disabled>Generar Enlace para Enviar</button>
+            
+            <div id="share-section" style="display:none; margin-top: 15px;">
+                <p style="font-size: 0.85rem; margin-bottom: 5px; color: var(--text-muted);">Copia este enlace y mándaselo por WhatsApp a tu pareja:</p>
+                <textarea class="share-link" id="share-url" readonly></textarea>
+                <button class="menu-btn btn-secondary" onclick="copyShareLink()">📋 Copiar Enlace</button>
+            </div>
+
+            <button class="menu-btn btn-secondary" onclick="showMenu()" style="margin-top: 10px;">Volver al Menú</button>
+        </div>
+
+        <!-- VISTA 3: TABLERO DE JUEGO -->
+        <div id="view-game" class="view">
+            <div id="game-status-msg" class="msg-box msg-info">Intento 1 de 10</div>
+            
+            <div class="board" id="game-board">
+                <!-- Filas del juego -->
+            </div>
+
+            <div class="palette" id="game-palette">
+                <!-- Paleta para jugar -->
+            </div>
+
+            <div class="row-controls">
+                <button class="action-btn btn-secondary" onclick="showMenu()">Abandonar</button>
+                <button class="action-btn btn-check" id="btn-submit" onclick="submitRow()" disabled>Comprobar</button>
+            </div>
+        </div>
+
+        <!-- VISTA 4: FIN DE JUEGO -->
+        <div id="view-gameover" class="view">
+            <div id="endgame-msg" class="msg-box"></div>
+            <div style="text-align: center; margin: 15px 0;">
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">El código secreto era:</p>
+                <div class="pegs-guess" id="secret-reveal" style="justify-content: center;"></div>
+            </div>
+            <button class="menu-btn btn-pc" onclick="showMenu()">Volver al Menú Principal</button>
+        </div>
+
+    </div>
+
+    <script>
+        const COLORS = ['c-red', 'c-blue', 'c-green', 'c-yellow', 'c-purple', 'c-orange'];
+        const CODE_LENGTH = 4;
+        const MAX_ATTEMPTS = 10;
+
+        let gameMode = 'pc'; // 'pc' o 'duo'
+        let secretCode = [];
+        let currentAttempt = 0;
+        let boardState = []; // Almacena los intentos realizados
+        let activeSelection = []; // Colores puestos en la fila actual
+        let selectedPaletteColor = null;
+
+        // Comprobar si se abrió un enlace de Dúo cifrado al cargar la página
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedSecret = urlParams.get('code');
+            if (encodedSecret) {
+                try {
+                    const decoded = atob(encodedSecret).split(',');
+                    if (decoded.length === CODE_LENGTH) {
+                        secretCode = decoded;
+                        gameMode = 'duo';
+                        initGame();
+                        return;
+                    }
+                } catch(e) {
+                    console.error("Enlace inválido");
+                }
+            }
+        };
+
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function showMenu() {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            showView('view-menu');
+        }
+
+        // --- MODO CONTRA LA PC ---
+        function startPCGame() {
+            gameMode = 'pc';
+            secretCode = [];
+            for(let i=0; i<CODE_LENGTH; i++) {
+                const randColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+                secretCode.push(randColor);
+            }
+            initGame();
+        }
+
+        // --- MODO DOS TELÉFONOS (CREAR) ---
+        function showCreateDuo() {
+            showView('view-create-duo');
+            activeSelection = Array(CODE_LENGTH).fill(null);
+            renderSecretBuilder();
+            renderPaletteBuilder();
+            document.getElementById('share-section').style.display = 'none';
+            document.getElementById('btn-generate-link').disabled = true;
+        }
+
+        function renderSecretBuilder() {
+            const container = document.getElementById('secret-builder');
+            container.innerHTML = '';
+            for(let i=0; i<CODE_LENGTH; i++) {
+                const peg = document.createElement('div');
+                peg.className = `peg ${activeSelection[i] || ''}`;
+                peg.onclick = () => {
+                    if(selectedPaletteColor) {
+                        activeSelection[i] = selectedPaletteColor;
+                        renderSecretBuilder();
+                        checkSecretComplete();
+                    }
+                };
+                container.appendChild(peg);
+            }
+        }
+
+        function renderPaletteBuilder() {
+            const palette = document.getElementById('palette-builder');
+            palette.innerHTML = '';
+            COLORS.forEach(color => {
+                const opt = document.createElement('div');
+                opt.className = `color-option ${color} ${selectedPaletteColor === color ? 'selected' : ''}`;
+                opt.onclick = () => {
+                    selectedPaletteColor = color;
+                    renderPaletteBuilder();
+                };
+                palette.appendChild(opt);
+            });
+        }
+
+        function checkSecretComplete() {
+            const isComplete = activeSelection.every(c => c !== null);
+            document.getElementById('btn-generate-link').disabled = !isComplete;
+        }
+
+        function generateDuoLink() {
+            const encoded = btoa(activeSelection.join(','));
+            const currentUrl = window.location.href.split('?')[0];
+            const finalUrl = `${currentUrl}?code=${encoded}`;
+            
+            document.getElementById('share-url').value = finalUrl;
+            document.getElementById('share-section').style.display = 'block';
+        }
+
+        function copyShareLink() {
+            const copyText = document.getElementById('share-url');
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert('¡Enlace copiado al portapapeles! Compártelo con tu pareja.');
+        }
+
+        // --- MOTOR COMÚN DEL JUEGO ---
+        function initGame() {
+            currentAttempt = 0;
+            boardState = [];
+            activeSelection = Array(CODE_LENGTH).fill(null);
+            selectedPaletteColor = null;
+            
+            showView('view-game');
+            renderBoard();
+            renderGamePalette();
+            updateGameStatus();
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+
+            for(let i = MAX_ATTEMPTS - 1; i >= 0; i--) {
+                const row = document.createElement('div');
+                row.className = `row ${i === currentAttempt ? 'active-row' : ''}`;
+                
+                // Celdas de adivinanza
+                const pegsGuess = document.createElement('div');
+                pegsGuess.className = 'pegs-guess';
+                
+                for(let j = 0; j < CODE_LENGTH; j++) {
+                    const peg = document.createElement('div');
+                    peg.className = 'peg';
+                    
+                    if(i === currentAttempt) {
+                        if(activeSelection[j]) peg.classList.add(activeSelection[j], 'filled');
+                        peg.onclick = () => {
+                            if(selectedPaletteColor) {
+                                activeSelection[j] = selectedPaletteColor;
+                                renderBoard();
+                                checkRowComplete();
+                            }
+                        };
+                    } else if(i < currentAttempt && boardState[i]) {
+                        const color = boardState[i].guess[j];
+                        if(color) peg.classList.add(color, 'filled');
+                    }
+                    pegsGuess.appendChild(peg);
+                }
+                row.appendChild(pegsGuess);
+
+                // Celdas de pistas (feedback)
+                const pegsFeedback = document.createElement('div');
+                pegsFeedback.className = 'pegs-feedback';
+                
+                for(let j = 0; j < CODE_LENGTH; j++) {
+                    const pin = document.createElement('div');
+                    pin.className = 'feedback-pin';
+                    if(i < currentAttempt && boardState[i]) {
+                        if(j < boardState[i].black) pin.classList.add('black');
+                        else if(j < boardState[i].black + boardState[i].white) pin.classList.add('white');
+                    }
+                    pegsFeedback.appendChild(pin);
+                }
+                row.appendChild(pegsFeedback);
+
+                board.appendChild(row);
+            }
+        }
+
+        function renderGamePalette() {
+            const palette = document.getElementById('game-palette');
+            palette.innerHTML = '';
+            COLORS.forEach(color => {
+                const opt = document.createElement('div');
+                opt.className = `color-option ${color} ${selectedPaletteColor === color ? 'selected' : ''}`;
+                opt.onclick = () => {
+                    selectedPaletteColor = color;
+                    renderGamePalette();
+                };
+                palette.appendChild(opt);
+            });
+        }
+
+        function checkRowComplete() {
+            const isComplete = activeSelection.every(c => c !== null);
+            document.getElementById('btn-submit').disabled = !isComplete;
+        }
+
+        function submitRow() {
+            if(!activeSelection.every(c => c !== null)) return;
+
+            // Calcular pistas (Negras y Blancas)
+            let black = 0;
+            let white = 0;
+            let secretCopy = [...secretCode];
+            let guessCopy = [...activeSelection];
+
+            // 1. Calcular negras (posición exacta)
+            for(let i = 0; i < CODE_LENGTH; i++) {
+                if(guessCopy[i] === secretCopy[i]) {
+                    black++;
+                    secretCopy[i] = null;
+                    guessCopy[i] = null;
+                }
+            }
+
+            // 2. Calcular blancas (color correcto, mala posición)
+            for(let i = 0; i < CODE_LENGTH; i++) {
+                if(guessCopy[i] !== null) {
+                    const index = secretCopy.indexOf(guessCopy[i]);
+                    if(index !== -1) {
+                        white++;
+                        secretCopy[index] = null;
+                    }
+                }
+            }
+
+            boardState[currentAttempt] = {
+                guess: [...activeSelection],
+                black: black,
+                white: white
+            };
+
+            // Comprobar victoria
+            if(black === CODE_LENGTH) {
+                endGame(true);
+                return;
+            }
+
+            currentAttempt++;
+
+            // Comprobar derrota
+            if(currentAttempt >= MAX_ATTEMPTS) {
+                endGame(false);
+                return;
+            }
+
+            activeSelection = Array(CODE_LENGTH).fill(null);
+            document.getElementById('btn-submit').disabled = true;
+            renderBoard();
+            updateGameStatus();
+        }
+
+        function updateGameStatus() {
+            document.getElementById('game-status-msg').innerText = `Intento ${currentAttempt + 1} de ${MAX_ATTEMPTS}`;
+        }
+
+        function endGame(won) {
+            showView('view-gameover');
+            const msgBox = document.getElementById('endgame-msg');
+            if(won) {
+                msgBox.className = 'msg-box msg-success';
+                msgBox.innerText = `🎉 ¡Felicidades! Adivinaste el código en ${currentAttempt + 1} intentos.`;
+            } else {
+                msgBox.className = 'msg-box msg-error';
+                msgBox.innerText = `😢 Se acabaron los intentos. ¡Inténtalo de nuevo!`;
+            }
+
+            const revealContainer = document.getElementById('secret-reveal');
+            revealContainer.innerHTML = '';
+            secretCode.forEach(color => {
+                const peg = document.createElement('div');
+                peg.className = `peg ${color} filled`;
+                revealContainer.appendChild(peg);
+            });
+        }
+    </script>
+</body>
+</html>
